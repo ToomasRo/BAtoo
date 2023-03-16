@@ -57,31 +57,25 @@ def joonista_temp(m, X, y, bpoint_fn=Slopes.breakpoint_finder, max_delta=0.0001)
     return _fig, (ax1, ax2)
 
 
-def joonista_variance(m: tf.keras.Sequential, X_test, X_train, y_train=None, bpoint_fn=Slopes.breakpoint_finder, *, ground_truth=False, xlim=None, ylim=None, returnplt=False):
-
-    # for each prediction, plot the mean value and the variance of the prediction
-    if y_train is None:
-        y_train = X_train**2
+def joonista_variance(m: tf.keras.Sequential, X_test, X_train, y_train=None, bpoint_fn=Slopes.breakpoint_finder, *, ground_truth=False, xlim=None, ylim=None, returnplt=False, no_variance=False):
 
     bpoints = bpoint_fn(m, X_test)
-    # print(bpoints)
 
-    # if len(bpoints)!=0 and isinstance(bpoints[0][1], np.ndarray):
-    #     print("Muudame bpointe")
-    #     bpoints = [(bp[0][0], bp[0][1]/1000) for bp in bpoints]
-    # print(bpoints)
     _patterns = [bp[1] for bp in bpoints]
     bpoints = [bp[0] for bp in bpoints]
-    # print(bpoints)
-    # print(patterns)
+
+    start, end = xlim if xlim else (-1, 1)
 
     print(f"model contains {len(bpoints)} breaks")
 
     y_pred = m.predict(X_test)
-    # print(y_pred)
-    y_pred_mean, y_pred_logvar = y_pred[:, 0], y_pred[:, 1]
-    y_pred_var = np.exp(y_pred_logvar)
-    y_pred_sd = np.sqrt(y_pred_var)
+
+    if no_variance:
+        y_pred_mean = y_pred
+    else:
+        y_pred_mean, y_pred_logvar = y_pred[:, 0], y_pred[:, 1]
+        y_pred_var = np.exp(y_pred_logvar)
+        y_pred_sd = np.sqrt(y_pred_var)
 
     fig, ax = plt.subplots(figsize=(6, 6))
     plt.xlim(xlim)
@@ -89,13 +83,14 @@ def joonista_variance(m: tf.keras.Sequential, X_test, X_train, y_train=None, bpo
 
     # absoluutselt õige
     if ground_truth:
-        plt.plot(np.linspace(-1, 1, 1000), ground_truth(np.linspace(-1,
-                 1, 1000)), label="õige", alpha=0.5, color="yellow")
+        plt.plot(np.linspace(start, end, 1000), ground_truth(np.linspace(
+            start, end, 1000)), label="ground truth", alpha=0.5, color="yellow")
 
     plt.plot(X_test, y_pred_mean, label="mean")
-    plt.fill_between(X_test, y_pred_mean - 2*y_pred_sd,
-                     y_pred_mean + 2*y_pred_sd, alpha=0.2, label="variance")
-    plt.scatter(X_train, y_train, marker='+', color="red", label="train")
+    if not no_variance:
+        plt.fill_between(X_test, y_pred_mean - 2*y_pred_sd,
+                         y_pred_mean + 2*y_pred_sd, alpha=0.2, label="2 standard hälvet")
+    plt.scatter(X_train, y_train, marker='.', color="red", label="train")
 
     temp_bpoints = list(zip(*bpoints))
     bx, by = temp_bpoints[0], temp_bpoints[1]
@@ -108,6 +103,7 @@ def joonista_variance(m: tf.keras.Sequential, X_test, X_train, y_train=None, bpo
         return plt
 
     plt.show()
+
 
 
 def neg_log_likelihood(y_true, y_predicted):
