@@ -131,7 +131,7 @@ def main():
     seeds = np.arange(n_runs)
     epochs = 1000
     cur_dir = os.getcwd()
-    directory = "test2/19_hpc_script"
+    directory = "const_func_uniform_data"
     directory = os.path.join(cur_dir, directory)
     print("saving to", directory)
     if not os.path.exists(directory):
