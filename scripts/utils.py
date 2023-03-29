@@ -59,7 +59,7 @@ def joonista_temp(m, X, y, bpoint_fn=Slopes.breakpoint_finder, max_delta=0.0001)
     return _fig, (ax1, ax2)
 
 
-def joonista_variance(m: tf.keras.Sequential, X_test, X_train, y_train=None, bpoint_fn=Slopes.breakpoint_finder, *, ground_truth=False, xlim=None, ylim=None, return_fig=False, no_variance=False, n_variances=2):
+def joonista_variance(m: tf.keras.Sequential, X_test, X_train, y_train=None, bpoint_fn=Slopes.breakpoint_finder, *, ground_truth=False, xlim=None, ylim=None, return_fig=False, no_variance=False, n_variances=2, title_text=""):
 
     bpoints = bpoint_fn(m, X_test)
 
@@ -98,7 +98,7 @@ def joonista_variance(m: tf.keras.Sequential, X_test, X_train, y_train=None, bpo
     bx, by = temp_bpoints[0], temp_bpoints[1]
 
     plt.scatter(bx, by, marker="o", color="green", label="breaks")
-
+    plt.title(title_text)
     plt.legend()
 
     if return_fig:
@@ -312,7 +312,7 @@ def calculate_rmses(model, start=0, end=10, steps=1000, akna_laius=0.1, fn=lambd
 
 
 def joonista_rmses5x(model, start=0, end=10, steps=1000, akna_laius=0.1,
-                     x_lim=None,y_lim=(0,30), fn=lambda x: x*np.sin(x), analyytiline_myra=lambda x: 0.09*x**2+0.09, reverse=False, show_plt=True):
+                     x_lim=None,y_lim=(0,30), fn=lambda x: x*np.sin(x), analyytiline_myra=lambda x: 0.09*x**2+0.09, reverse=False, show_plt=True, title_text=""):
     rmses = calculate_rmses(model, start=start, end=end, steps=steps, akna_laius=akna_laius, fn=fn, analyytiline_myra=analyytiline_myra, reverse=reverse)
     sns.set_style('ticks')
 
@@ -329,7 +329,7 @@ def joonista_rmses5x(model, start=0, end=10, steps=1000, akna_laius=0.1,
 
     ax.set_ylim(y_lim)
 
-    plt.title(f"jooksev aken (w={akna_laius}), x on akna keskpunkt")
+    plt.title(title_text+f", w={akna_laius}")
     
     if show_plt:
         plt.show()
