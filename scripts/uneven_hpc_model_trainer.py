@@ -133,8 +133,8 @@ def create_x_train(train_size, different_place, different_multiplier=1, x_range=
     erinev_num = different_multiplier*keskmine_num # B
     piirkond = (x_range[1]-x_range[0])/n_places
     piirkonnad = [(x_range[0]+i*piirkond, x_range[0]+(i+1)*piirkond) for i in range(n_places)]
-    print(f"piirkond: {piirkond}")
-    print(f"piirkonnad: {piirkonnad}")
+    #print(f"piirkond: {piirkond}")
+    #print(f"piirkonnad: {piirkonnad}")
 
     X_train = []
     for idx, p in enumerate(piirkonnad):
@@ -162,6 +162,7 @@ def main():
     cur_dir = os.getcwd()
     directory = "const_func_uneven_data"
     directory = os.path.join(cur_dir, directory)
+    
     print("saving to", directory)
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -203,6 +204,7 @@ def main():
                     mse_treening_andmete_teine_myra = samad_punktid_kui_treeningul_teine_myra(
                         X_train, model, fn, noise_fn, test_goal)
 
+                    # TODO see ei salvesta kõiki ära korralikult TODO TODO
                     model.save(
                         f"{directory}/models/{train_size}_{seed}", overwrite=True)
                     # m = tf.keras.models.load_model("test2/19_hpc_script/models/10_0", custom_objects={'neg_log_likelihood': utils.neg_log_likelihood})

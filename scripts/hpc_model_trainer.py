@@ -121,11 +121,12 @@ def samad_punktid_kui_treeningul_teine_myra(X_train, model, fn, noise_fn, test_g
 
 
 def main():
-    train_sizes = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180,
-               190, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 2000, 5000, 10**4, 10**5, 10**6]
-    X_grid_test = np.linspace(0, 10, 10**7)
+    #train_sizes = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180,
+    #           190, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 2000, 5000, 10**4, 10**5, 10**6]
+    train_sizes = [160, 170, 180]
+    X_grid_test = np.linspace(0, 10, 10**6)
     y_grid_test = fn(X_grid_test) + noise_fn(X_grid_test)
-    test_goal = 10**7
+    test_goal = 10**6
 
     n_runs = 5
     seeds = np.arange(n_runs)
