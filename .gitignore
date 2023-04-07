@@ -134,3 +134,9 @@ plots/
 notebooks/meetings
 test/
 .vscode/
+andmed/
+.idea/
+const_func_*_data/
+tmp/
+prun0
+*.prof

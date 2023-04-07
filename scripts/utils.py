@@ -181,7 +181,7 @@ def train_data_maker(elements: list[tuple[float, float, float, float]], fn=lambd
 # RMSE arvutamised
 #
 ####################
-def tegelik_myra(x, fn=lambda x: 0.09*x**2+0.09):
+def tegelik_myra(x, fn=lambda x: 0.09*x**2+0.09, reverse=False, end=10):
     """Tegelik myra, mis on funktsioonist arvutatud
 
     :param x: x
@@ -190,6 +190,8 @@ def tegelik_myra(x, fn=lambda x: 0.09*x**2+0.09):
     """
     # tegelik_myra_lambda = lambda x: np.sqrt(0.09*x**2+0.09)
     #x = 10-x
+    if reverse:     # TODO: see töötab vaid siis kui uurimispiirkond on 0..10
+        x = end-x
     return np.sqrt(fn(x))  # noqa: C3001
 
 
@@ -270,7 +272,7 @@ def calculate_rmses(model, start=0, end=10, steps=1000, akna_laius=0.1, fn=lambd
     y_test = fn(X_test) + 0.3 * X_test * np.random.randn(len(X_test)) + 0.3 * np.random.randn(len(X_test))
     
     if reverse:
-        y_test = fn(X_test)[::-1] + 0.3 * X_test[::-1] * np.random.randn(len(X_test)) + 0.3 * np.random.randn(len(X_test))
+        y_test = fn(X_test[::-1]) + 0.3 * X_test[::-1] * np.random.randn(len(X_test)) + 0.3 * np.random.randn(len(X_test))
     
     y_pred = model.predict(X_test,batch_size=32768, verbose=0)
     y_pred_mean = y_pred[:, 0]
@@ -294,7 +296,7 @@ def calculate_rmses(model, start=0, end=10, steps=1000, akna_laius=0.1, fn=lambd
 
         y_true_mean_aknas = y_true_mean[(X_test >= w_start) & (X_test < w_end)]
 
-        rmse1 = tegelik_myra((w_start+w_end)/2, fn=analyytiline_myra)
+        rmse1 = tegelik_myra((w_start+w_end)/2, fn=analyytiline_myra, reverse=reverse, end=end)
         rmse2 = np.sqrt(np.mean(y_pred_variance_aknas))
         rmse3 =  np.sqrt(np.mean(
             (y_pred_mean_aknas-y_aknas)**2
@@ -313,6 +315,7 @@ def calculate_rmses(model, start=0, end=10, steps=1000, akna_laius=0.1, fn=lambd
 
 def joonista_rmses5x(model, start=0, end=10, steps=1000, akna_laius=0.1,
                      x_lim=None,y_lim=(0,30), fn=lambda x: x*np.sin(x), analyytiline_myra=lambda x: 0.09*x**2+0.09, reverse=False, show_plt=True, title_text=""):
+    
     rmses = calculate_rmses(model, start=start, end=end, steps=steps, akna_laius=akna_laius, fn=fn, analyytiline_myra=analyytiline_myra, reverse=reverse)
     sns.set_style('ticks')
 
