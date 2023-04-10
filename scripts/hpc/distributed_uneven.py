@@ -174,7 +174,7 @@ def main():
                    100, 125, 150, 175, 200, 250, 500, 750, 1000, 2000]
     different_places = [0, 1, 2, 3, 4]
     different_multiplier = float(args.multiplier)
-    directory = args.directory
+    directory = args.output
 
     X_grid_test = np.linspace(0, 10, 10**6)
     y_grid_test = fn(X_grid_test) + noise_fn(X_grid_test)
