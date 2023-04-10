@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name="testy"
 #SBATCH --partition=main
-#SBATCH --time=10:00:00
+#SBATCH --time=05:00:00
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=6G
 #SBATCH --array=0-49
@@ -15,7 +15,4 @@ source /gpfs/space/home/troosma/bakatoo/bakatoo/baka_env/bin/activate
 python3 --version
 which python3
 
-srun python ./scripts/hpc/reverse_distributed_uneven.py --seed $SLURM_ARRAY_TASK_ID --multiplier $MY_ARG -o './andmed/reverse'
-
-
-#srun python ./scripts/hpc/distributed_uneven.py --seed 0 --multiplier $MY_ARG -o '../andmed/t1'
+srun python ./scripts/hpc/reverse_distributed_uneven.py --seed $SLURM_ARRAY_TASK_ID --multiplier $MY_ARG -o './andmed/reverse2'
