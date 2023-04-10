@@ -268,7 +268,7 @@ def rmse_from_gtruth_2_samples(X_test, y_test, fn):
 
 def calculate_rmses(model, start=0, end=10, steps=1000, akna_laius=0.1, fn=lambda x: x*np.sin(x), analyytiline_myra=lambda x: 0.09*x**2+0.09, reverse=False):
     reset_seeds(100)
-    X_test = np.linspace(start-2, end+2, 10000)
+    X_test = np.linspace(start-2, end+2, 100_000) # TODO see on tõeline X_test, ei saa parameetriga ette anda.
     y_test = fn(X_test) + 0.3 * X_test * np.random.randn(len(X_test)) + 0.3 * np.random.randn(len(X_test))
     
     if reverse:
