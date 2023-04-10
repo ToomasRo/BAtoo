@@ -63,6 +63,7 @@ def kogu_andmed_dfks(pathikene: str, df_columns: list[str]):
         hist_bpoint_laiem = None
         abs_diff = None
         rel_diff = None
+        print(dirpath)
 
         for filename in filenames:
             # print(os.path.join(dirpath, filename))
@@ -86,7 +87,8 @@ def kogu_andmed_dfks(pathikene: str, df_columns: list[str]):
                     ...
         if hist_bpoint is not None and abs_diff is not None and rel_diff is not None and hist_bpoint_laiem is not None:
             _temp.append([train_size, seed, multiplier, region, *hist_bpoint, *hist_bpoint_laiem, *abs_diff, *rel_diff, *raw_mean2, *raw_mean3])
-
+    
+    print("Creating dataframe")
     df = pd.DataFrame(_temp, columns=df_columns)
     return df
 
@@ -114,4 +116,5 @@ if __name__ == "__main__":
     output_file = args.file
 
     df = kogu_andmed_dfks(input_dir, df_columns)
+    print("Saving dataframe")
     df.to_csv(os.path.join(args.output, args.file), index=False)

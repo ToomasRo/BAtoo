@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH --job-name="agregate"
+#SBATCH --partition=main
+#SBATCH --time=01:00:00
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=12G
+#SBATCH --output=./slurm_output/agregate-%A.out
+
+MY_I=$1
+MY_O=$2
+MY_F=$3
+
+
+module load any/python/3.9.9
+source /gpfs/space/home/troosma/bakatoo/bakatoo/baka_env/bin/activate
+python3 --version
+which python3
+
+srun python ./scripts/hpc/agregator.py -i $MY_I -o $MY_O -f $MY_F
