@@ -6,19 +6,18 @@ print(os.getcwd())
 # sys.path.append(os.path.dirname(os.getcwd())) # add parent directory to path
 sys.path.append(os.getcwd())  # add  directory to path
 
-
-import argparse
-import scripts.Slopes as Slopes
-import scripts.utils as utils
-from scripts.CustomCallbacks import CustomLogger
-import seaborn as sns
-from matplotlib import pyplot as plt
-from keras import layers
-from tensorflow import keras
-import tensorflow as tf
-import random
-import numpy as np
 import json
+import numpy as np
+import random
+import tensorflow as tf
+from tensorflow import keras
+from keras import layers
+from matplotlib import pyplot as plt
+import seaborn as sns
+from scripts.CustomCallbacks import CustomLogger
+import scripts.utils as utils
+import scripts.Slopes as Slopes
+import argparse
 
 
 arg_parser = argparse.ArgumentParser()
@@ -41,7 +40,6 @@ print(args.output)
 
 random.seed(args.seed)
 print(f"{args.seed} sai sellise: {random.random()}")
-
 
 
 def train_model(
@@ -72,8 +70,8 @@ def train_model(
     :param seed: seed, defaults to 42
     :return: treenitud mudel, ajalugu, treeningandmed
     """
-
-    utils.reset_seeds(seed)
+    if seed:
+        utils.reset_seeds(seed)
 
     model = keras.Sequential([
         layers.Input(shape=(1,)),
@@ -148,7 +146,7 @@ def samad_punktid_kui_treeningul_teine_myra(X_train, model, fn, noise_fn, test_g
 # different_multiplier = [0.25, 0.5, 1, 2, 4]
 # seed = [0, 1, 2, 3, 4]
 def create_x_train(train_size, different_place, different_multiplier=1, x_range=(0, 10), n_places=5, seed=None):
-    utils.reset_seeds(seed)
+    # utils.reset_seeds(seed)
 
     keskmine_num = train_size/n_places  # A
     erinev_num = different_multiplier*keskmine_num  # B
@@ -172,8 +170,9 @@ def create_x_train(train_size, different_place, different_multiplier=1, x_range=
 def main():
     global args
 
-    train_sizes = [100, 500, 2000] #[10, 20, 30, 40, 50, 60, 70, 80, 90,100, 125, 150, 175, 200, 250, 500, 750, 1000, 2000]
-    different_places = [0,2,4] #[0, 1, 2, 3, 4]
+    train_sizes = [10, 20, 30, 40, 50, 60, 70, 80, 90,
+                   100, 125, 150, 175, 200, 250, 500, 750, 1000, 2000]
+    different_places = [0, 1, 2, 3, 4]
     different_multiplier = float(args.multiplier)
     directory = args.output
 
@@ -184,7 +183,6 @@ def main():
     seed = int(args.seed)
     epochs = 1000
     cur_dir = os.getcwd()
-
 
     directory = os.path.join(cur_dir, directory)
     print("saving to", directory)
@@ -204,15 +202,17 @@ def main():
 
             descriptor = f"train_size:{train_size}, diff:{different_multiplier}{chr(65+different_place)}, seed:{seed}"
 
-            print(f"Training size: {train_size}, different place: {chr(65+different_place)}, different multiplier: {different_multiplier}, seed: {seed}")
+            print(
+                f"Training size: {train_size}, different place: {chr(65+different_place)}, different multiplier: {different_multiplier}, seed: {seed}")
 
             utils.reset_seeds(seed)
             X_train = create_x_train(train_size, different_place=different_place,
-                                        different_multiplier=different_multiplier, x_range=(0, 10), n_places=5, seed=seed)
+                                     different_multiplier=different_multiplier, x_range=(0, 10), n_places=5, seed=seed)
 
             model, _h, (X_train, y_train) = train_model(
                 X_train, nn_size=(20, 20), epochs=epochs,
-                fn=fn, noise_fn=noise_fn, seed=0,    #TODO important: kaalud algvaartustatakse alati sama seediga
+                # TODO important: kas algvaartustatakse alati sama seediga
+                fn=fn, noise_fn=noise_fn, seed=None,
                 reverse_noise=True,
             )
             y_pred_train = model.predict(
@@ -227,19 +227,22 @@ def main():
             mse_treening_andmete_teine_myra = samad_punktid_kui_treeningul_teine_myra(
                 X_train, model, fn, noise_fn, test_goal)
 
-            model.save(
-                f"{directory}/models/{train_size}/{seed}/{different_multiplier}{chr(65+different_place)}", overwrite=True)
+            # model.save(
+            #     f"{directory}/models/{train_size}/{seed}/{different_multiplier}{chr(65+different_place)}", overwrite=True)
             # m = tf.keras.models.load_model("test2/19_hpc_script/models/10_0", custom_objects={'neg_log_likelihood': utils.neg_log_likelihood})
 
-            variance_fig = utils.joonista_variance(model, X_test=np.linspace(-2, 12, 1000), X_train=X_train, y_train=y_train,
-                                                    xlim=(-2, 12), ylim=(-10, 10), ground_truth=fn, bpoint_fn=Slopes.new_breakpoint_finder, return_fig=True, title_text=descriptor)
-            variance_fig.savefig(
-                f"{directory}/plots/variance/{train_size}_{different_multiplier}{chr(65+different_place)}_{seed}.png")
+            if seed in [0, 1, 2, 3, 4]:
+                variance_fig = utils.joonista_variance(model, X_test=np.linspace(-2, 12, 1000), X_train=X_train, y_train=y_train,
+                                                       xlim=(-2, 12), ylim=(-10, 10), ground_truth=fn, bpoint_fn=Slopes.new_breakpoint_finder, return_fig=True, title_text=descriptor)
+                variance_fig.savefig(
+                    f"{directory}/plots/variance/{train_size}_{different_multiplier}{chr(65+different_place)}_{seed}.png")
 
             rmses, rmse_fig = utils.joonista_rmses5x(model=model, start=0, end=10, steps=1000, akna_laius=0.1,
-                                                        fn=lambda x: 0*x, analyytiline_myra=lambda x: 0.09*x**2+0.09, reverse=True, show_plt=False, title_text=descriptor)
-            rmse_fig.savefig(
-                f"{directory}/plots/rmses/{train_size}_{different_multiplier}{chr(65+different_place)}_{seed}.png")
+                                                     fn=lambda x: 0*x, analyytiline_myra=lambda x: 0.09*x**2+0.09, reverse=True, show_plt=False, title_text=descriptor)
+
+            if seed in [0, 1, 2, 3, 4]:
+                rmse_fig.savefig(
+                    f"{directory}/plots/rmses/{train_size}_{different_multiplier}{chr(65+different_place)}_{seed}.png")
 
             bpoints = Slopes.new_breakpoint_finder(
                 model, np.linspace(-2, 12, 10**6))
