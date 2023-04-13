@@ -181,7 +181,7 @@ def main():
     test_goal = 10**6
 
     seed = int(args.seed)
-    epochs = 1000
+    epochs = 3000
     cur_dir = os.getcwd()
 
     directory = os.path.join(cur_dir, directory)
@@ -237,8 +237,8 @@ def main():
                     f"{directory}/plots/variance/{train_size}_{different_multiplier}{chr(65+different_place)}_{seed}.png")
 
             rmses, rmse_fig = utils.joonista_rmses5x(model=model, start=0, end=10, steps=1000, akna_laius=0.1,
-                                                     fn=fn, analyytiline_myra=lambda x: 0.09*x**2+0.09, show_plt=False, title_text=descriptor)
-
+                                                     fn=fn, noise_fn=noise_fn, analyytiline_myra=lambda x: 0.09*x**2+0.09, reverse_noise=False, show_plt=True,title_text=descriptor)
+            
             if seed in [0, 1, 2, 3, 4]:
                 rmse_fig.savefig(
                     f"{directory}/plots/rmses/{train_size}_{different_multiplier}{chr(65+different_place)}_{seed}.png")

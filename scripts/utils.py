@@ -190,7 +190,7 @@ def tegelik_myra(x, fn=lambda x: 0.09*x**2+0.09, reverse=False, end=10):
     """
     # tegelik_myra_lambda = lambda x: np.sqrt(0.09*x**2+0.09)
     #x = 10-x
-    if reverse:     # TODO: see töötab vaid siis kui uurimispiirkond on 0..10
+    if reverse:     # TODO: see töötab vaid siis kui uurimispiirkond on 0..10, vist töötab nüüd
         x = end-x
     return np.sqrt(fn(x))  # noqa: C3001
 
@@ -266,13 +266,22 @@ def rmse_from_gtruth_2_samples(X_test, y_test, fn):
 #
 ####################
 
-def calculate_rmses(model, start=0, end=10, steps=1000, akna_laius=0.1, fn=lambda x: x*np.sin(x), analyytiline_myra=lambda x: 0.09*x**2+0.09, reverse=False):
+def calculate_rmses(model, start=0, end=10, steps=1000, akna_laius=0.1, 
+                    fn=lambda x: x*np.sin(x), noise_fn=lambda x:0.3 * np.random.randn(len(x)) + 0.3 * x * np.random.randn(len(x)), 
+                    analyytiline_myra=lambda x: 0.09*x**2+0.09, 
+                    reverse_fn=False, reverse_noise=False):
     reset_seeds(100)
     X_test = np.linspace(start-2, end+2, 100_000) # TODO see on tõeline X_test, ei saa parameetriga ette anda.
-    y_test = fn(X_test) + 0.3 * X_test * np.random.randn(len(X_test)) + 0.3 * np.random.randn(len(X_test))
+    y_test = fn(X_test) + noise_fn(X_test)
     
-    if reverse:
-        y_test = fn(X_test[::-1]) + 0.3 * X_test[::-1] * np.random.randn(len(X_test)) + 0.3 * np.random.randn(len(X_test))
+    if reverse_fn and reverse_noise:
+        y_test = fn(X_test[::-1]) + noise_fn(X_test[::-1])
+    elif reverse_fn:
+        y_test = fn(X_test[::-1]) + noise_fn(X_test)
+    elif reverse_noise:
+        y_test = fn(X_test) + noise_fn(X_test[::-1])
+    else:
+        y_test = fn(X_test) + noise_fn(X_test)
     
     y_pred = model.predict(X_test,batch_size=32768, verbose=0)
     y_pred_mean = y_pred[:, 0]
@@ -296,7 +305,7 @@ def calculate_rmses(model, start=0, end=10, steps=1000, akna_laius=0.1, fn=lambd
 
         y_true_mean_aknas = y_true_mean[(X_test >= w_start) & (X_test < w_end)]
 
-        rmse1 = tegelik_myra((w_start+w_end)/2, fn=analyytiline_myra, reverse=reverse, end=end)
+        rmse1 = tegelik_myra((w_start+w_end)/2, fn=analyytiline_myra, reverse=reverse_noise, end=end)
         rmse2 = np.sqrt(np.mean(y_pred_variance_aknas))
         rmse3 =  np.sqrt(np.mean(
             (y_pred_mean_aknas-y_aknas)**2
@@ -313,10 +322,13 @@ def calculate_rmses(model, start=0, end=10, steps=1000, akna_laius=0.1, fn=lambd
     return np.array(rmses2).reshape(-1, 6)
 
 
-def joonista_rmses5x(model, start=0, end=10, steps=1000, akna_laius=0.1,
-                     x_lim=None,y_lim=(0,30), fn=lambda x: x*np.sin(x), analyytiline_myra=lambda x: 0.09*x**2+0.09, reverse=False, show_plt=True, title_text=""):
+def joonista_rmses5x(model, start=0, end=10, steps=1000, akna_laius=0.1, x_lim=None,y_lim=(0,30), 
+                     fn=lambda x: x*np.sin(x), noise_fn=lambda x:0.3 * np.random.randn(len(x)) + 0.3 * x * np.random.randn(len(x)), 
+                    analyytiline_myra=lambda x: 0.09*x**2+0.09, 
+                    reverse_fn=False, reverse_noise=False, 
+                    show_plt=True, title_text=""):
     
-    rmses = calculate_rmses(model, start=start, end=end, steps=steps, akna_laius=akna_laius, fn=fn, analyytiline_myra=analyytiline_myra, reverse=reverse)
+    rmses = calculate_rmses(model, start=start, end=end, steps=steps, akna_laius=akna_laius, fn=fn, noise_fn=noise_fn, analyytiline_myra=analyytiline_myra, reverse_fn=reverse_fn, reverse_noise=reverse_noise)
     sns.set_style('ticks')
 
     fig, ax = plt.subplots()
