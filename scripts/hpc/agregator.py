@@ -8,7 +8,7 @@ sys.path.append(os.getcwd())  # add  directory to path
 import argparse
 import numpy as np
 import pandas as pd
-
+import json
 
 
 
@@ -63,6 +63,7 @@ def kogu_andmed_dfks(pathikene: str, df_columns: list[str]):
         hist_bpoint_laiem = None
         abs_diff = None
         rel_diff = None
+        mses = None
         print(dirpath)
 
         for filename in filenames:
@@ -85,8 +86,14 @@ def kogu_andmed_dfks(pathikene: str, df_columns: list[str]):
                     abs_diff, rel_diff, (raw_mean2, raw_mean3) = process_rmse(os.path.join(dirpath, filename), regions)
                 elif "y_pred" in filename:
                     ...
-        if hist_bpoint is not None and abs_diff is not None and rel_diff is not None and hist_bpoint_laiem is not None:
-            _temp.append([train_size, seed, multiplier, region, *hist_bpoint, *hist_bpoint_laiem, *abs_diff, *rel_diff, *raw_mean2, *raw_mean3])
+            if filename.endswith('.json'):
+                with open(os.path.join(dirpath, filename), 'r', encoding="cp1252") as f:
+                    mses = json.load(f)
+                
+                
+
+        if hist_bpoint is not None and abs_diff is not None and rel_diff is not None and hist_bpoint_laiem is not None and mses is not None:
+            _temp.append([train_size, seed, multiplier, region, *hist_bpoint, *hist_bpoint_laiem, *abs_diff, *rel_diff, *raw_mean2, *raw_mean3, *mses.values()])
     
     print("Creating dataframe")
     df = pd.DataFrame(_temp, columns=df_columns)
@@ -109,7 +116,8 @@ if __name__ == "__main__":
               *[f'abs_diff_in_{chr(a)}' for a in range(97, 97+5)],
               *[f'rel_diff_in_{chr(a)}' for a in range(97, 97+5)],
               *[f'raw_mean2_in_{chr(a)}' for a in range(97, 97+5)],
-              *[f'raw_mean3_in_{chr(a)}' for a in range(97, 97+5)], ]
+              *[f'raw_mean3_in_{chr(a)}' for a in range(97, 97+5)],
+              *['mse_treeningul', 'mse_grid_testil', 'mse_treening_andmete_teine_myra'],]
 
     input_dir = args.input
     output_dir = args.output
