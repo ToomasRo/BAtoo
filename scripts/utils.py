@@ -1,6 +1,8 @@
 import random
 import numpy as np
+import pandas as pd
 import tensorflow as tf
+from scipy import stats
  
 from scripts import Slopes
 import matplotlib.pyplot as plt
@@ -366,3 +368,157 @@ def joonista_hypotees_143(rmses, akna_laius=0.1, a_min=0, a_max=15):
     sns.lineplot(x=rmses[:, 0]+akna_laius/2, y=np.clip(rmses[:, 3]**2, a_min=a_min, a_max=a_max), label='3.')
     ax.set_ylabel('variance')
     
+
+def read_aggregated_data(path):
+    df = pd.read_csv(path)
+
+    df.train_size = df.train_size.astype(int)
+    df.random_seed = df.random_seed.astype(int)
+    df.multiplier = df.multiplier.astype(float)
+    for i in range(5):
+        df[f"ext_bpoints_in_{chr(i+ord('a'))}"] = df[f"ext_bpoints_in_{chr(i+ord('a'))}"].astype(int)
+
+    # lisame mugavusväärtused
+    df["points_in_equal_regions"] = (df["train_size"] / 5).astype(int)
+    df["points_in_diff_region"] = (
+        df["points_in_equal_regions"] * df["multiplier"]).astype(int)
+    df["total_points"] = 4*df["points_in_equal_regions"] + \
+        df["points_in_diff_region"]
+
+    # tuunime välja väga kauged väärtused:
+    cols_to_process = [*[f'abs_diff_in_{chr(a)}' for a in range(97, 97+5)],
+                       *[f'rel_diff_in_{chr(a)}' for a in range(97, 97+5)],
+                       *[f'raw_mean2_in_{chr(a)}' for a in range(97, 97+5)],
+                       *[f'raw_mean3_in_{chr(a)}' for a in range(97, 97+5)],
+                       *['mse_treeningul', 'mse_grid_testil',
+                           'mse_treening_andmete_teine_myra'],
+                       ]
+
+    df[cols_to_process] = df.loc[:, cols_to_process][np.abs(
+        stats.zscore(df.loc[:, cols_to_process])) < 3]
+    df.dropna(inplace=True)
+
+    df.sort_values(by=["train_size", "region", "multiplier",
+                   "random_seed"], inplace=True, ignore_index=True)
+    df = df.groupby(['region', 'multiplier', 'train_size']
+                    ).mean().reset_index()
+
+    df["combo_name"] = df["train_size"].astype(str) + "_" + df["region"] + "_" + df["multiplier"].astype(str)
+    return df
+
+
+def transform_no_scaling(df, minu: str, naabrid: list[str], kaugemad: list[str]):
+    ma_olen_reg = minu
+    # naabrid = ['a','c']
+    naabrid_upper = [n.upper() for n in naabrid]
+    # kaugemad = ['d','e']
+    kaugemad_upper = [k.upper() for k in kaugemad]
+
+    # y_col = "rel_diff_in_"+ma_olen_reg
+
+    df_new = pd.DataFrame()
+    df_new["my_bpoints"] = df["bpoints_in_"+ma_olen_reg]
+    if len(naabrid) == 2:
+        df_new["neighbour_bpoints"] = (
+            df["bpoints_in_"+naabrid[0]] + df["bpoints_in_"+naabrid[1]])/2
+    else:
+        df_new["neighbour_bpoints"] = df["bpoints_in_"+naabrid[0]]
+
+    if len(kaugemad) == 2:
+        df_new["distant_bpoints"] = (
+            df["bpoints_in_"+kaugemad[0]] + df["bpoints_in_"+kaugemad[1]])/2
+    else:
+        df_new["distant_bpoints"] = df["bpoints_in_"+kaugemad[0]]
+
+    df_new["my_rel_diff"] = df["rel_diff_in_"+ma_olen_reg]
+
+    df_new["my_raw_mean2"] = df["raw_mean2_in_"+ma_olen_reg]
+    if len(naabrid) == 2:
+        df_new["neighbour_raw_mean2"] = (
+            df["raw_mean2_in_"+naabrid[0]] + df["raw_mean2_in_"+naabrid[1]])/2
+    else:
+        df_new["neighbour_raw_mean2"] = df["raw_mean2_in_"+naabrid[0]]
+
+    if len(kaugemad) == 2:
+        df_new["distant_raw_mean2"] = (
+            df["raw_mean2_in_"+kaugemad[0]] + df["raw_mean2_in_"+kaugemad[1]])/2
+    else:
+        df_new["distant_raw_mean2"] = df["raw_mean2_in_"+kaugemad[0]]
+
+    # minus olevad punktid
+    df_new["my_points"] = (df["train_size"]/5 * df["multiplier"] * (df["region"] ==
+                           ma_olen_reg.upper())) + (df["train_size"]/5 * (df["region"] != ma_olen_reg.upper()))
+    df_new["my_points"] = df_new["my_points"].astype(int)
+
+    if len(naabrid) == 2:
+        df_new["neighbour_points"] = (df["train_size"]/5 * df["multiplier"] * (
+            df["region"] == naabrid_upper[0])) + (df["train_size"]/5 * (df["region"] != naabrid_upper[0]))
+        df_new["neighbour_points"] += (df["train_size"]/5 * df["multiplier"] * (
+            df["region"] == naabrid_upper[1])) + (df["train_size"]/5 * (df["region"] != naabrid_upper[1]))
+        df_new["neighbour_points"] = (df_new["neighbour_points"]/2).astype(int)
+    else:
+        df_new["neighbour_points"] = (df["train_size"]/5 * df["multiplier"] * (
+            df["region"] == naabrid_upper[0])) + (df["train_size"]/5 * (df["region"] != naabrid_upper[0]))
+        df_new["neighbour_points"] = df_new["neighbour_points"].astype(int)
+
+    if len(kaugemad) == 2:
+        df_new["distant_points"] = (df["train_size"]/5 * df["multiplier"] * (
+            df["region"] == kaugemad_upper[0])) + (df["train_size"]/5 * (df["region"] != kaugemad_upper[0]))
+        df_new["distant_points"] += (df["train_size"]/5 * df["multiplier"] * (
+            df["region"] == kaugemad_upper[1])) + (df["train_size"]/5 * (df["region"] != kaugemad_upper[1]))
+        df_new["distant_points"] = (df_new["distant_points"]/2).astype(int)
+    else:
+        df_new["distant_points"] = (df["train_size"]/5 * df["multiplier"] * (
+            df["region"] == kaugemad_upper[0])) + (df["train_size"]/5 * (df["region"] != kaugemad_upper[0]))
+        df_new["distant_points"] = df_new["distant_points"].astype(int)
+
+    # et ei oleks ühtegi nulli enam
+    df_new["my_points"] = (df_new["my_points"]+1).astype(float)
+    df_new["neighbour_points"] = (df_new["neighbour_points"]+1).astype(float)
+    df_new["distant_points"] = (df_new["distant_points"]+1).astype(float)
+
+    df_new["my_points_m1"] = df_new["my_points"] ** (-1)
+    df_new["my_points_log"] = np.log(df_new["my_points"])
+    df_new["my_points_logm1"] = (np.log(df_new["my_points"])+1.0) ** (-1)
+
+    df_new["neighbour_points_m1"] = df_new["neighbour_points"] ** (-1)
+    df_new["neighbour_points_log"] = np.log(df_new["neighbour_points"])
+    df_new["neighbour_points_logm1"] = (
+        np.log(df_new["neighbour_points"]) + 1.0) ** (-1)
+
+    df_new["distant_points_m1"] = df_new["distant_points"] ** (-1)
+    df_new["distant_points_log"] = np.log(df_new["distant_points"])
+    df_new["distant_points_logm1"] = (
+        np.log(df_new["distant_points"]) + 1.0) ** (-1)
+
+    df_new["mse_treeningul"] = df["mse_treeningul"]
+    df_new.dropna(inplace=True)
+    df_new.reset_index(inplace=True, drop=True)
+
+    df_new.drop_duplicates(inplace=True, ignore_index=True)
+
+    X = df_new.drop(columns=['my_rel_diff'])
+    y = df_new['my_rel_diff']
+
+    return X, y
+
+def create_x_train(train_size, different_place, different_multiplier=1, x_range=(0, 10), n_places=5, seed=None):
+    # utils.reset_seeds(seed)
+
+    keskmine_num = train_size/n_places  # A
+    erinev_num = different_multiplier*keskmine_num  # B
+    piirkond = (x_range[1]-x_range[0])/n_places
+    piirkonnad = [(x_range[0]+i*piirkond, x_range[0]+(i+1)*piirkond)
+                  for i in range(n_places)]
+    #print(f"piirkond: {piirkond}")
+    #print(f"piirkonnad: {piirkonnad}")
+
+    X_train = []
+    for idx, p in enumerate(piirkonnad):
+        if idx == different_place:
+            X_train.append(np.random.uniform(p[0], p[1], int(erinev_num)))
+        else:
+            X_train.append(np.random.uniform(p[0], p[1], int(keskmine_num)))
+
+    X_train = np.concatenate(X_train)
+    return X_train
