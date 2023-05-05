@@ -21,9 +21,18 @@ kaugemad = [['c'], ['d'], ['a', 'e'], ['b'], ['c']]
 regioonide_combod = list(zip(regioon, naabrid, kaugemad))
 
 with open('ols_model.pkl', 'rb') as f:
-    regressioon_mudel = pickle.load(f)
-with open('regression_scaler.pkl', 'rb') as f:
-    reg_scaler = pickle.load(f)
+    final_model = pickle.load(f)
+with open('points_model.pkl', 'rb') as f:
+    points_result = pickle.load(f)
+with open('bpoints_model.pkl', 'rb') as f:
+    bpoints_result = pickle.load(f)
+
+with open('general_scaler.pkl', 'rb') as f:
+    general_scaler = pickle.load(f)
+with open('points_scaler.pkl', 'rb') as f:
+    points_scaler = pickle.load(f)
+with open('bpoint_scaler.pkl', 'rb') as f:
+    bpoint_scaler = pickle.load(f)
 
 
 def process_break_points(file_path, regions):
@@ -54,6 +63,14 @@ def process_rmse(file_path, regions):
 
     return absoluut_vahed, suhtelised_vahed, (r2_mean, r3_mean)
 
+def kombineeri_tunnus_mudelist_ja_dfist(mudel, df):
+    series = np.zeros(shape=df.shape[0])
+    for param in mudel.params.keys():
+        if param!="const":
+            series += df[param] * mudel.params[param] 
+        else:
+            series += np.ones(shape=df.shape[0]) * mudel.params["const"]
+    return series
 
 def laisk_nll(y_true, ypredmean, ypredlogvar):
     # tf.reduce_mean(y_pred_var + tf.math.square(y_true - y_pred_mean) / tf.math.exp(y_pred_var))
@@ -124,40 +141,27 @@ def kai_labi_dir(baasdir):
             # print(train_size, seed, multiplier,region)
             # display(suurX.head())
 
-            uuritavad_col = suurX.columns
-            suurX = reg_scaler.transform(suurX,)
+            suurX[points_scaler.feature_names_in_] = points_scaler.transform(suurX[points_scaler.feature_names_in_])
+            suurX["points_combo"] = kombineeri_tunnus_mudelist_ja_dfist(points_result, suurX)
+            suurX[bpoint_scaler.feature_names_in_] = bpoint_scaler.transform(suurX[bpoint_scaler.feature_names_in_])
+            suurX["bpoints_combo"] = kombineeri_tunnus_mudelist_ja_dfist(bpoints_result, suurX)
+
+            
+            uuritavad_col = general_scaler.feature_names_in_
+            suurX = suurX[uuritavad_col]
+            suurX = general_scaler.transform(suurX)
             suurX = pd.DataFrame(suurX, columns=uuritavad_col)
-            suurX["my_points_combo"] = suurX.my_points * -0.3762 + suurX.my_points_m1 * -3.3876 + \
-                suurX.my_points_log * 1.3885 + suurX.my_points_logm1 * \
-                4.0044 + np.ones(shape=suurX.shape[0]) * -1.0568
-            suurX["neighbour_points_combo"] = suurX.neighbour_points * -0.3268 + suurX.neighbour_points_m1 * -1.7966 + \
-                suurX.neighbour_points_log * 0.7729 + suurX.neighbour_points_logm1 * \
-                1.7054 + np.ones(shape=suurX.shape[0]) * -0.5441
-            # suurX["distant_points_combo"] = suurX.distant_points * result3.params["distant_points"] + suurX.distant_points_m1 * result3.params["distant_points_m1"] + suurX.distant_points_log * result3.params["distant_points_log"] + suurX.distant_points_logm1 * result3.params["distant_points_logm1"] + np.ones(shape=suurX.shape[0]) * result3.params["const"]
-            suurX["points_combo"] = suurX.my_points_combo * 0.8223 + \
-                suurX.neighbour_points_combo * \
-                0.2080  # + const4 * result4.params["const"]
-
-            suurX["bpoints_combo"] = suurX.my_bpoints * -0.4097 + suurX.neighbour_bpoints * - \
-                0.1139 + suurX.distant_bpoints * -0.0604 + \
-                np.ones(shape=suurX.shape[0]) * 0.0618
-
-            suurX.drop(['my_bpoints', 'neighbour_bpoints', 'distant_bpoints',
-                        'my_points', 'neighbour_points_combo', 'my_points_combo',
-                        'neighbour_points', 'distant_points', 'my_points_m1', 'my_points_log',
-                        'my_points_logm1', 'neighbour_points_m1', 'neighbour_points_log',
-                        'neighbour_points_logm1', 'distant_points_m1', 'distant_points_log',
-                        'distant_points_logm1', ], axis=1, inplace=True)
+            suurX = sm.add_constant(suurX, has_constant='add')
 
             y_pred_mean = y_preds[:, 0]
             y_pred_logvar = y_preds[:, 1]
-            a = y_pred_logvar
+            a = np.exp(y_pred_logvar)
             y_pred_sd = np.sqrt(np.exp(y_pred_logvar))
-            correctors = regressioon_mudel.predict(suurX)
+            correctors = final_model.predict(suurX)
             b = correctors.repeat(y_preds.shape[0]/5)
 
-            x = a / (b+1)  # ühik : logvar
-            x_sd = np.sqrt(np.exp(x))
+            x = a / (b+1)  # ühik : var
+            x_logvar = np.log(x)
 
             utils.reset_seeds(seed)
 
@@ -169,7 +173,7 @@ def kai_labi_dir(baasdir):
             else:
                 y_true = fn(X) + noise_fn(X)
             vana = laisk_nll(y_true, y_pred_mean, y_pred_logvar)
-            uus = laisk_nll(y_true, y_pred_mean, x_sd)
+            uus = laisk_nll(y_true, y_pred_mean, x_logvar)
             uus_df_temp.append(
                 [train_size, seed, multiplier, region, vana, uus])
 
@@ -196,3 +200,4 @@ if __name__ == "__main__":
 
     print("Saving dataframe")
     df.to_csv(os.path.join(output_dir, output_file), index=False)
+
