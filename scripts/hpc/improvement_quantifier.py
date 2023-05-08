@@ -35,6 +35,35 @@ with open('bpoint_scaler.pkl', 'rb') as f:
     bpoint_scaler = pickle.load(f)
 
 
+def muuda_veergude_nimed_eestikeelseks(df):
+    eesti_nimed = {
+        'const': 'Konstant',
+        'my_bpoints': 'Murde_enda',
+        'neighbour_bpoints': 'Murde_naaber',
+        'distant_bpoints': 'Murde_kauge',
+        'my_raw_mean2': 'EnnustatudDispersioon_enda',
+        'neighbour_raw_mean2': 'EnnustatudDispersioon_naaber',
+        'distant_raw_mean2': 'EnnustatudDispersioon_kauge',
+        'my_points': 'Punkte_enda',
+        'neighbour_points': 'Punkte_naaber',    
+        'distant_points': 'Punkte_kauge',
+        'my_points_m1': '1/Punkte_enda',
+        'my_points_log': 'ln(Punkte_enda)',
+        'my_points_logm1': '1/ln(Punkte_enda)',
+        'neighbour_points_m1': '1/Punkte_naaber',
+        'neighbour_points_log': 'ln(Punkte_naaber)',
+        'neighbour_points_logm1': '1/ln(Punkte_naaber)',
+        'distant_points_m1': '1/Punkte_kauge',
+        'distant_points_log': 'ln(Punkte_kauge)',
+        'distant_points_logm1': '1/ln(Punkte_kauge)',
+        'mse_treeningul': 'MSE treeningul',
+        'points_combo': 'Punkte_kombi',
+        'bpoints_combo': 'Murde_kombi',
+    }
+    df = df.rename(columns=eesti_nimed)
+    return df
+
+
 def process_break_points(file_path, regions):
     with open(file_path, 'rb') as f:
         data = np.load(f)
@@ -46,7 +75,7 @@ def process_rmse(file_path, regions):
     with open(file_path, 'rb') as f:
         data = np.load(f)
 
-    # splitime andmed vastavalt regionitele jätame välja piirkonnad mis on väiksem ja suurem kui andmete piirid
+    # splitime andmed vastavalt regionitele jÃ¤tame vÃ¤lja piirkonnad mis on vÃ¤iksem ja suurem kui andmete piirid
     r_all = np.split(data, np.searchsorted(data[:, 0], v=regions))[1:-1]
 
     # absoluutsed vahed joonte 2. ja 3. vahel (keskmine piirkonnas)
@@ -109,10 +138,8 @@ def kai_labi_dir(baasdir):
 
             def noise_fn(X): return 0.3 * np.random.randn(len(X)
                                                           ) + 0.3 * X * np.random.randn(len(X))
-            if "reverse" in dirpath:
-                reverse_noise = True
-            else:
-                reverse_noise = False
+            def reverse_noise(X): return 0.3 * np.random.randn(len(X)
+                                                          ) + 0.3 * (10-X) * np.random.randn(len(X))
 
             bpoints = process_break_points(os.path.join(
                 dirpath, "bpoints.npy"), np.arange(0, 12, 2))
@@ -141,17 +168,20 @@ def kai_labi_dir(baasdir):
             # print(train_size, seed, multiplier,region)
             # display(suurX.head())
 
-            suurX[points_scaler.feature_names_in_] = points_scaler.transform(suurX[points_scaler.feature_names_in_])
-            suurX["points_combo"] = kombineeri_tunnus_mudelist_ja_dfist(points_result, suurX)
-            suurX[bpoint_scaler.feature_names_in_] = bpoint_scaler.transform(suurX[bpoint_scaler.feature_names_in_])
-            suurX["bpoints_combo"] = kombineeri_tunnus_mudelist_ja_dfist(bpoints_result, suurX)
+            suurX = muuda_veergude_nimed_eestikeelseks(suurX)
 
-            
+            suurX["Konstant"] = 1
+            suurX[points_scaler.feature_names_in_] = points_scaler.transform(suurX[points_scaler.feature_names_in_])
+            suurX["Punkte_kombi"] = kombineeri_tunnus_mudelist_ja_dfist(points_result, suurX)
+            suurX[bpoint_scaler.feature_names_in_] = bpoint_scaler.transform(suurX[bpoint_scaler.feature_names_in_])
+            suurX["Murde_kombi"] = kombineeri_tunnus_mudelist_ja_dfist(bpoints_result, suurX)
+
+
             uuritavad_col = general_scaler.feature_names_in_
             suurX = suurX[uuritavad_col]
             suurX = general_scaler.transform(suurX)
             suurX = pd.DataFrame(suurX, columns=uuritavad_col)
-            suurX = sm.add_constant(suurX, has_constant='add')
+            suurX["Konstant"] = 1
 
             y_pred_mean = y_preds[:, 0]
             y_pred_logvar = y_preds[:, 1]
@@ -160,7 +190,7 @@ def kai_labi_dir(baasdir):
             correctors = final_model.predict(suurX)
             b = correctors.repeat(y_preds.shape[0]/5)
 
-            x = a / (b+1)  # ühik : var
+            x = a / (b+1)  # Ã¼hik : var
             x_logvar = np.log(x)
 
             utils.reset_seeds(seed)
@@ -168,14 +198,17 @@ def kai_labi_dir(baasdir):
             X = utils.create_x_train(train_size=train_size, different_place=ord(
                 region)-65, different_multiplier=multiplier)
             X = np.linspace(0, 10, 1000000)
-            if reverse_noise:
-                y_true = fn(X) + noise_fn(X[::-1])
+
+            if "reverse" in dirpath:
+                y_true = fn(X) + reverse_noise(X)
             else:
                 y_true = fn(X) + noise_fn(X)
+
             vana = laisk_nll(y_true, y_pred_mean, y_pred_logvar)
             uus = laisk_nll(y_true, y_pred_mean, x_logvar)
             uus_df_temp.append(
                 [train_size, seed, multiplier, region, vana, uus])
+            print(train_size, seed, multiplier, region, vana, uus)
 
     return pd.DataFrame(data=uus_df_temp, columns=uus_df_cols)
 
