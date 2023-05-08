@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="r sin"
+#SBATCH --job-name="o const"
 #SBATCH --partition=main
 #SBATCH --time=04:00:00
 #SBATCH --cpus-per-task=2
@@ -15,4 +15,4 @@ source /gpfs/space/home/troosma/bakatoo/bakatoo/baka_env/bin/activate
 python3 --version
 which python3
 
-srun python ./scripts/hpc/sin_reverse.py --seed $SLURM_ARRAY_TASK_ID --multiplier $MY_ARG -o './andmed/sin_reverse'
+srun python ./scripts/hpc/const_order.py --seed $SLURM_ARRAY_TASK_ID --multiplier $MY_ARG -o './andmed/const_order'
